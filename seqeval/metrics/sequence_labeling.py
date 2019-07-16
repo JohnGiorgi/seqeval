@@ -12,14 +12,21 @@ from collections import defaultdict
 import numpy as np
 
 
-def get_entities(seq, suffix=False):
+def get_entities(seq, criteria='exact', suffix=False):
     """Gets entities from sequence.
 
     Args:
         seq (list): sequence of labels.
+        criteria (str): Optional, criteria which will be used for evaluation.
+            'exact' matches boundaries exactly, 'left' requires only a left
+            boundary match and 'right' requires only a right boundary match.
+            Defaults to 'exact'.
 
     Returns:
         list: list of (chunk_type, chunk_start, chunk_end).
+
+    Raises:
+        ValueError, if `criteria` is not one of 'exact', 'left', or 'right'.
 
     Example:
         >>> from seqeval.metrics.sequence_labeling import get_entities
@@ -27,6 +34,11 @@ def get_entities(seq, suffix=False):
         >>> get_entities(seq)
         [('PER', 0, 1), ('LOC', 3, 3)]
     """
+    if criteria not in ['exact', 'left', 'right']:
+        err_msg = ("Expected criteria to be one of 'exact', 'left', or 'right'."
+                   " Got: {}").format(criteria)
+        raise ValueError(err_msg)
+
     # for nested list
     if any(isinstance(s, list) for s in seq):
         seq = [item for sublist in seq for item in sublist + ['O']]
@@ -44,7 +56,13 @@ def get_entities(seq, suffix=False):
             type_ = chunk.split('-')[-1]
 
         if end_of_chunk(prev_tag, tag, prev_type, type_):
-            chunks.append((prev_type, begin_offset, i-1))
+            if criteria == 'exact':
+                chunks.append((prev_type, begin_offset, i-1))
+            elif criteria == 'left':
+                chunks.append((prev_type, begin_offset))
+            elif criteria == 'right':
+                chunks.append((prev_type, i-1))
+
         if start_of_chunk(prev_tag, tag, prev_type, type_):
             begin_offset = i
         prev_tag = tag
@@ -113,7 +131,7 @@ def start_of_chunk(prev_tag, tag, prev_type, type_):
     return chunk_start
 
 
-def f1_score(y_true, y_pred, average='micro', suffix=False):
+def f1_score(y_true, y_pred, average='micro', criteria='exact', suffix=False):
     """Compute the F1 score.
 
     The F1 score can be interpreted as a weighted average of the precision and
@@ -126,9 +144,16 @@ def f1_score(y_true, y_pred, average='micro', suffix=False):
     Args:
         y_true : 2d array. Ground truth (correct) target values.
         y_pred : 2d array. Estimated targets as returned by a tagger.
+        criteria (str): Optional, criteria which will be used for evaluation.
+            'exact' matches boundaries exactly, 'left' requires only a left
+            boundary match and 'right' requires only a right boundary match.
+            Defaults to 'exact'.
 
     Returns:
         score : float.
+
+    Raises:
+        ValueError, if `criteria` is not one of 'exact', 'left', or 'right'.
 
     Example:
         >>> from seqeval.metrics import f1_score
@@ -137,8 +162,13 @@ def f1_score(y_true, y_pred, average='micro', suffix=False):
         >>> f1_score(y_true, y_pred)
         0.50
     """
-    true_entities = set(get_entities(y_true, suffix))
-    pred_entities = set(get_entities(y_pred, suffix))
+    if criteria not in ['exact', 'left', 'right']:
+        err_msg = ("Expected criteria to be one of 'exact', 'left', or 'right'."
+                   " Got: {}").format(criteria)
+        raise ValueError(err_msg)
+
+    true_entities = set(get_entities(y_true, criteria, suffix))
+    pred_entities = set(get_entities(y_pred, criteria, suffix))
 
     nb_correct = len(true_entities & pred_entities)
     nb_pred = len(pred_entities)
@@ -184,7 +214,7 @@ def accuracy_score(y_true, y_pred):
     return score
 
 
-def precision_score(y_true, y_pred, average='micro', suffix=False):
+def precision_score(y_true, y_pred, average='micro', criteria='exact', suffix=False):
     """Compute the precision.
 
     The precision is the ratio ``tp / (tp + fp)`` where ``tp`` is the number of
@@ -196,9 +226,16 @@ def precision_score(y_true, y_pred, average='micro', suffix=False):
     Args:
         y_true : 2d array. Ground truth (correct) target values.
         y_pred : 2d array. Estimated targets as returned by a tagger.
+        criteria (str): Optional, criteria which will be used for evaluation.
+            'exact' matches boundaries exactly, 'left' requires only a left
+            boundary match and 'right' requires only a right boundary match.
+            Defaults to 'exact'.
 
     Returns:
         score : float.
+
+    Raises:
+        ValueError, if `criteria` is not one of 'exact', 'left', or 'right'.
 
     Example:
         >>> from seqeval.metrics import precision_score
@@ -207,8 +244,13 @@ def precision_score(y_true, y_pred, average='micro', suffix=False):
         >>> precision_score(y_true, y_pred)
         0.50
     """
-    true_entities = set(get_entities(y_true, suffix))
-    pred_entities = set(get_entities(y_pred, suffix))
+    if criteria not in ['exact', 'left', 'right']:
+        err_msg = ("Expected criteria to be one of 'exact', 'left', or 'right'."
+                   " Got: {}").format(criteria)
+        raise ValueError(err_msg)
+
+    true_entities = set(get_entities(y_true, criteria, suffix))
+    pred_entities = set(get_entities(y_pred, criteria, suffix))
 
     nb_correct = len(true_entities & pred_entities)
     nb_pred = len(pred_entities)
@@ -218,7 +260,7 @@ def precision_score(y_true, y_pred, average='micro', suffix=False):
     return score
 
 
-def recall_score(y_true, y_pred, average='micro', suffix=False):
+def recall_score(y_true, y_pred, average='micro', criteria='exact', suffix=False):
     """Compute the recall.
 
     The recall is the ratio ``tp / (tp + fn)`` where ``tp`` is the number of
@@ -230,9 +272,16 @@ def recall_score(y_true, y_pred, average='micro', suffix=False):
     Args:
         y_true : 2d array. Ground truth (correct) target values.
         y_pred : 2d array. Estimated targets as returned by a tagger.
+        criteria (str): Optional, criteria which will be used for evaluation.
+            'exact' matches boundaries exactly, 'left' requires only a left
+            boundary match and 'right' requires only a right boundary match.
+            Defaults to 'exact'.
 
     Returns:
         score : float.
+
+    Raises:
+        ValueError, if `criteria` is not one of 'exact', 'left', or 'right'.
 
     Example:
         >>> from seqeval.metrics import recall_score
@@ -241,8 +290,13 @@ def recall_score(y_true, y_pred, average='micro', suffix=False):
         >>> recall_score(y_true, y_pred)
         0.50
     """
-    true_entities = set(get_entities(y_true, suffix))
-    pred_entities = set(get_entities(y_pred, suffix))
+    if criteria not in ['exact', 'left', 'right']:
+        err_msg = ("Expected criteria to be one of 'exact', 'left', or 'right'."
+                   " Got: {}").format(criteria)
+        raise ValueError(err_msg)
+
+    true_entities = set(get_entities(y_true, criteria, suffix))
+    pred_entities = set(get_entities(y_pred, criteria, suffix))
 
     nb_correct = len(true_entities & pred_entities)
     nb_true = len(true_entities)
@@ -270,31 +324,38 @@ def performance_measure(y_true, y_pred):
         >>> performance_measure(y_true, y_pred)
         (3, 3, 1, 4)
     """
-    performace_dict = dict()
+    performance_dict = dict()
     if any(isinstance(s, list) for s in y_true):
         y_true = [item for sublist in y_true for item in sublist]
         y_pred = [item for sublist in y_pred for item in sublist]
-    performace_dict['TP'] = sum(y_t == y_p for y_t, y_p in zip(y_true, y_pred)
-                                if ((y_t != 'O') or (y_p != 'O')))
-    performace_dict['FP'] = sum(y_t != y_p for y_t, y_p in zip(y_true, y_pred))
-    performace_dict['FN'] = sum(((y_t != 'O') and (y_p == 'O'))
-                                for y_t, y_p in zip(y_true, y_pred))
-    performace_dict['TN'] = sum((y_t == y_p == 'O')
-                                for y_t, y_p in zip(y_true, y_pred))
+    performance_dict['TP'] = sum(y_t == y_p for y_t, y_p in zip(y_true, y_pred)
+                                 if ((y_t != 'O') or (y_p != 'O')))
+    performance_dict['FP'] = sum(y_t != y_p for y_t, y_p in zip(y_true, y_pred))
+    performance_dict['FN'] = sum(((y_t != 'O') and (y_p == 'O'))
+                                 for y_t, y_p in zip(y_true, y_pred))
+    performance_dict['TN'] = sum((y_t == y_p == 'O')
+                                 for y_t, y_p in zip(y_true, y_pred))
 
-    return performace_dict
+    return performance_dict
 
 
-def classification_report(y_true, y_pred, digits=2, suffix=False):
+def classification_report(y_true, y_pred, digits=2, criteria='exact', suffix=False):
     """Build a text report showing the main classification metrics.
 
     Args:
         y_true : 2d array. Ground truth (correct) target values.
         y_pred : 2d array. Estimated targets as returned by a classifier.
         digits : int. Number of digits for formatting output floating point values.
+        criteria (str): Optional, criteria which will be used for evaluation.
+            'exact' matches boundaries exactly, 'left' requires only a left
+            boundary match and 'right' requires only a right boundary match.
+            Defaults to 'exact'.
 
     Returns:
         report : string. Text summary of the precision, recall, F1 score for each class.
+
+    Raises:
+        ValueError, if `criteria` is not one of 'exact', 'left', or 'right'.
 
     Examples:
         >>> from seqeval.metrics import classification_report
@@ -310,8 +371,13 @@ def classification_report(y_true, y_pred, digits=2, suffix=False):
           macro avg       0.50      0.50      0.50         2
         <BLANKLINE>
     """
-    true_entities = set(get_entities(y_true, suffix))
-    pred_entities = set(get_entities(y_pred, suffix))
+    if criteria not in ['exact', 'left', 'right']:
+        err_msg = ("Expected criteria to be one of 'exact', 'left', or 'right'."
+                   " Got: {}").format(criteria)
+        raise ValueError(err_msg)
+
+    true_entities = set(get_entities(y_true, criteria, suffix))
+    pred_entities = set(get_entities(y_pred, criteria, suffix))
 
     name_width = 0
     d1 = defaultdict(set)
